@@ -7,8 +7,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 /**
  * Abre conexões com o banco H2 e cria as tabelas na primeira execução.
@@ -32,12 +32,15 @@ public class ConexaoBanco {
     /** Executa o schema.sql (CREATE TABLE IF NOT EXISTS): seguro rodar a cada inicialização. */
     public void inicializarEsquema() throws FonteIndisponivelException {
         String script = lerScript("/schema.sql");
-        try (Connection conexao = abrirConexao();
-             Statement statement = conexao.createStatement()) {
+        try (Connection conexao = abrirConexao()) {
             for (String comando : script.split(";")) {
                 String sql = removerComentarios(comando).trim();
-                if (!sql.isEmpty()) {
-                    statement.execute(sql); // script fixo do projeto, sem nenhum dado do usuário
+                if (sql.isEmpty()) {
+                    continue;
+                }
+                // Script fixo do projeto (schema.sql), sem nenhum dado digitado pelo usuário.
+                try (PreparedStatement ps = conexao.prepareStatement(sql)) {
+                    ps.execute();
                 }
             }
         } catch (SQLException e) {
